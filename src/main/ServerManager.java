@@ -31,7 +31,7 @@ public class ServerManager extends JFrame {
 
     private ExecutorService pool;
     private Connection connection;
-    private final String url="jdbc:ucanaccess://D:/GamesProjects/Java/SuperSmashShootServer/DataBase.accdb";
+    private final String url="jdbc:ucanaccess://C:/Users/vazqu/IdeaProjects/SuperSmashShootServer/DataBase.accdb";
     private ServerSocket server;
 
     private boolean loop;

@@ -118,6 +118,9 @@ public class ClientSpeaker extends Thread {
                     this.inputOfSpeaker.close();
                     this.outputOfSpeaker.close();
                     this.socketOfSpeaker.close();
+                    this.inputOfListener.close();
+                    this.outputOfListener.close();
+                    this.socketOfListener.close();
                 } catch (IOException e1) {
                     e1.printStackTrace();
                 }
