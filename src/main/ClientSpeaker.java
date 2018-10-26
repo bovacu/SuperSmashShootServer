@@ -52,6 +52,7 @@ public class ClientSpeaker extends Thread {
                 if(requests != null){
                     if(requests.equals(this.REQUESTS[0])) {
                         this.outputOfSpeaker.writeBytes("CLOSE OK" + "\r\n");
+                        this.outputOfListener.writeBytes("CLOSE OK" + "\r\n");
                         ServerManager.numberOfPLayers--;
                         System.out.println(ServerManager.numberOfPLayers);
                         this.label.setText("Number of players: " + ServerManager.numberOfPLayers);
