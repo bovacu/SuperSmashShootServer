@@ -20,16 +20,18 @@ public class ClientSpeaker extends Thread {
     private Connection connection;
     private String userName;
     private JLabel label;
+    private JFrame frame;
 
-    ClientSpeaker(Socket socketOfSpeaker, Socket socketOfListener,  String url, JLabel label){
+    ClientSpeaker(Socket socketOfSpeaker, Socket socketOfListener,  String url, JLabel label, JFrame frame){
         this.socketOfSpeaker = socketOfSpeaker;
         this.socketOfListener = socketOfListener;
         this.label = label;
+        this.frame = frame;
 
         try {
             this.connection = DriverManager.getConnection(url);
         } catch (SQLException e) {
-            e.printStackTrace();
+            JOptionPane.showMessageDialog(this.frame, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
         }
 
         try {
@@ -39,7 +41,7 @@ public class ClientSpeaker extends Thread {
             this.inputOfListener = new DataInputStream(socketOfListener.getInputStream());
             this.outputOfListener = new DataOutputStream(socketOfListener.getOutputStream());
         } catch (IOException e) {
-            e.printStackTrace();
+            JOptionPane.showMessageDialog(this.frame, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -123,7 +125,7 @@ public class ClientSpeaker extends Thread {
                     this.outputOfListener.close();
                     this.socketOfListener.close();
                 } catch (IOException e1) {
-                    e1.printStackTrace();
+                    JOptionPane.showMessageDialog(this.frame, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
                 }
                 break;
             }
@@ -131,7 +133,7 @@ public class ClientSpeaker extends Thread {
             try {
                 Thread.sleep(500);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                JOptionPane.showMessageDialog(this.frame, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
             }
 
         }
@@ -141,7 +143,7 @@ public class ClientSpeaker extends Thread {
             this.inputOfSpeaker.close();
             this.outputOfSpeaker.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            JOptionPane.showMessageDialog(this.frame, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -150,14 +152,14 @@ public class ClientSpeaker extends Thread {
             try {
                 c.outputOfListener.writeBytes(s + "\r\n");
             } catch (IOException e) {
-                e.printStackTrace();
+                JOptionPane.showMessageDialog(this.frame, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
             }
         }
 
         try {
             c.outputOfListener.flush();
         } catch (IOException e) {
-            e.printStackTrace();
+            JOptionPane.showMessageDialog(this.frame, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
         }
     }
 }

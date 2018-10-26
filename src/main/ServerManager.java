@@ -18,7 +18,7 @@ public class ServerManager extends JFrame {
         try {
             Class.forName("net.ucanaccess.jdbc.UcanaccessDriver");
         } catch (ClassNotFoundException e) {
-            System.out.println("No puedo cargar el driver JDBC de la BD");
+            System.out.printf("No se puedo conectar a la BD");
         }
     }
 
@@ -45,7 +45,7 @@ public class ServerManager extends JFrame {
         try {
             this.server = new ServerSocket(this.PORT);
         } catch (IOException e) {
-            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
         }
 
         this.pool = Executors.newFixedThreadPool(this.MAX_THREADS);
@@ -65,12 +65,12 @@ public class ServerManager extends JFrame {
                 this.count.repaint();
                 super.revalidate();
                 super.repaint();
-                ClientSpeaker cp = new ClientSpeaker(socketOfSpeaker, socketOfListener, url, this.count);
+                ClientSpeaker cp = new ClientSpeaker(socketOfSpeaker, socketOfListener, url, this.count, this);
                 ServerManager.currentPlayers.add(cp);
                 this.pool.execute(cp);
 
             } catch (IOException e){
-                e.printStackTrace();
+                JOptionPane.showMessageDialog(this, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
             }
         }
 
@@ -80,7 +80,7 @@ public class ServerManager extends JFrame {
             if(this.server != null)
                 this.server.close();
         } catch (SQLException | IOException e) {
-            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
         }
 
         this.pool.shutdown();
@@ -121,7 +121,7 @@ public class ServerManager extends JFrame {
             super.setLocation(x, y);
 
         } catch (IOException | FontFormatException e) {
-            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
         }
 
     }
