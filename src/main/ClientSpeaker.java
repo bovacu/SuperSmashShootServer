@@ -1,25 +1,30 @@
 package main;
 
+import javax.swing.*;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
-public class ClientSpeaker implements Runnable {
+public class ClientSpeaker extends Thread {
 
-    private final String REQUESTS[] = {"CLOSE", "FRIEND LIST", "CONNECT", "REGISTER"};
+    private final String REQUESTS[] = {"CLOSE", "FRIEND LIST", "CONNECT", "REGISTER", "FRIEND REQUEST", "PARTY REQUEST",
+    "SEND PARTY REQUEST"};
 
-    private Socket socket;
-    private DataInputStream input;
-    private DataOutputStream output;
-    private boolean close;
+    private Socket socketOfSpeaker, socketOfListener;
+    private DataInputStream inputOfSpeaker, inputOfListener;
+    private DataOutputStream outputOfSpeaker, outputOfListener;
     private Connection connection;
     private String userName;
+    private JLabel label;
 
-    public ClientSpeaker(Socket socket, String url){
-        this.socket = socket;
-        this.close = false;
+    ClientSpeaker(Socket socketOfSpeaker, Socket socketOfListener,  String url, JLabel label){
+        this.socketOfSpeaker = socketOfSpeaker;
+        this.socketOfListener = socketOfListener;
+        this.label = label;
 
         try {
             this.connection = DriverManager.getConnection(url);
@@ -28,8 +33,11 @@ public class ClientSpeaker implements Runnable {
         }
 
         try {
-            this.input = new DataInputStream(socket.getInputStream());
-            this.output = new DataOutputStream(socket.getOutputStream());
+            this.inputOfSpeaker = new DataInputStream(socketOfSpeaker.getInputStream());
+            this.outputOfSpeaker = new DataOutputStream(socketOfSpeaker.getOutputStream());
+
+            this.inputOfListener = new DataInputStream(socketOfListener.getInputStream());
+            this.outputOfListener = new DataOutputStream(socketOfListener.getOutputStream());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -39,46 +47,77 @@ public class ClientSpeaker implements Runnable {
     public void run() {
         while(true){
             try {
-                String requests = this.input.readLine();
+                String requests = this.inputOfSpeaker.readLine();
                 System.out.println(requests);
                 if(requests != null){
                     if(requests.equals(this.REQUESTS[0])) {
-                        this.output.writeBytes("CLOSE OK" + "\r\n");
+                        this.outputOfSpeaker.writeBytes("CLOSE OK" + "\r\n");
+                        ServerManager.numberOfPLayers--;
+                        System.out.println(ServerManager.numberOfPLayers);
+                        this.label.setText("Number of players: " + ServerManager.numberOfPLayers);
+                        this.label.revalidate();
+                        this.label.repaint();
+                        ServerManager.currentPlayers.remove(this);
                         break;
                     }
 
                     else if(requests.equals(this.REQUESTS[1])){
-                        this.output.writeBytes("SENDING FRIEND LIST" + "\r\n");
-                        Friends f = new Friends(this.socket, this.input, this.output, this.connection, this.userName);
+                        this.outputOfSpeaker.writeBytes("SENDING FRIEND LIST" + "\r\n");
+                        Friends f = new Friends(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
                         f.run();
                     }
 
                     else if(requests.equals(this.REQUESTS[2])){
-                        String usr = this.input.readLine();
-                        String psw = this.input.readLine();
+                        String usr = this.inputOfSpeaker.readLine();
+                        String psw = this.inputOfSpeaker.readLine();
                         this.userName = usr;
-                        Connections c = new Connections(this.socket, this.input, this.output, this.connection, usr, psw);
+                        super.setName(this.userName);
+                        Connections c = new Connections(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, usr, psw);
                         c.run();
                     }
 
                     else if(requests.equals(this.REQUESTS[3])){
-                        String usr = this.input.readLine();
-                        String psw = this.input.readLine();
-                        Registration r = new Registration(this.socket, this.input, this.output, this.connection, usr, psw);
+                        String usr = this.inputOfSpeaker.readLine();
+                        String psw = this.inputOfSpeaker.readLine();
+                        Registration r = new Registration(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, usr, psw);
                         r.run();
                     }
 
+                    else if(requests.equals(this.REQUESTS[4])){
+                        this.outputOfSpeaker.writeBytes("SENDING REQUEST LIST" + "\r\n");
+                        FriendRequests fr = new FriendRequests(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
+                        fr.run();
+                    }
+
+                    else if(requests.equals(this.REQUESTS[5])){
+                        this.outputOfSpeaker.writeBytes("SENDING PARTY REQUESTS" + "\r\n");
+                        PartyRequests pr = new PartyRequests(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
+                        pr.run();
+                    }
+
+                    else if(requests.equals(this.REQUESTS[6])){
+                        String partyRequestReceiver = this.inputOfSpeaker.readLine();
+                        for(ClientSpeaker c : ServerManager.currentPlayers)
+                            if(c.getName().equals(partyRequestReceiver)) {
+                                List<String> toSend = new ArrayList<>();
+                                toSend.add("PARTY REQUEST SENT");
+                                toSend.add(this.userName);
+                                c.writeInstantAction(c, toSend);
+                                break;
+                            }
+                    }
+
                     else{
-                        this.output.writeBytes("NAN" + "\r\n");
-                        this.output.flush();
+                        this.outputOfSpeaker.writeBytes("NAN" + "\r\n");
+                        this.outputOfSpeaker.flush();
                     }
                 }
             } catch (IOException e) {
                 e.printStackTrace();
                 try {
-                    this.input.close();
-                    this.output.close();
-                    this.socket.close();
+                    this.inputOfSpeaker.close();
+                    this.outputOfSpeaker.close();
+                    this.socketOfSpeaker.close();
                 } catch (IOException e1) {
                     e1.printStackTrace();
                 }
@@ -94,9 +133,25 @@ public class ClientSpeaker implements Runnable {
         }
 
         try {
-            this.socket.close();
-            this.input.close();
-            this.output.close();
+            this.socketOfSpeaker.close();
+            this.inputOfSpeaker.close();
+            this.outputOfSpeaker.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void writeInstantAction(ClientSpeaker c, List<String> commands){
+        for(String s : commands){
+            try {
+                c.outputOfListener.writeBytes(s + "\r\n");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        try {
+            c.outputOfListener.flush();
         } catch (IOException e) {
             e.printStackTrace();
         }

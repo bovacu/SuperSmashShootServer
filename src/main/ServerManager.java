@@ -1,17 +1,18 @@
 package main;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import javax.swing.*;
+import java.awt.*;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class ServerManager {
+public class ServerManager extends JFrame {
 
     static {
         try {
@@ -25,14 +26,22 @@ public class ServerManager {
     private final int PORT = 6767;
     private final int MAX_THREADS = 50;
 
+    static int numberOfPLayers = 0;
+    static List<ClientSpeaker> currentPlayers;
+
     private ExecutorService pool;
     private Connection connection;
     private final String url="jdbc:ucanaccess://D:/GamesProjects/Java/SuperSmashShootServer/DataBase.accdb";
     private ServerSocket server;
 
     private boolean loop;
+    private JLabel count;
 
-    public ServerManager(){
+    ServerManager(){
+
+        this.count = new JLabel("Number of players: 0");
+        this.createWindow(this.count);
+        ServerManager.currentPlayers = new ArrayList<>();
         try {
             this.server = new ServerSocket(this.PORT);
         } catch (IOException e) {
@@ -43,14 +52,22 @@ public class ServerManager {
         this.loop = true;
     }
 
-    public void runServer(){
+    void runServer(){
         while(this.loop){
-
-            Socket client;
+            Socket socketOfSpeaker, socketOfListener;
 
             try{
-                client = this.server.accept();
-                this.pool.execute(new ClientSpeaker(client, url));
+                socketOfSpeaker = this.server.accept();
+                socketOfListener = this.server.accept();
+                numberOfPLayers++;
+                this.count.setText("Number of players: " + numberOfPLayers);
+                this.count.revalidate();
+                this.count.repaint();
+                super.revalidate();
+                super.repaint();
+                ClientSpeaker cp = new ClientSpeaker(socketOfSpeaker, socketOfListener, url, this.count);
+                ServerManager.currentPlayers.add(cp);
+                this.pool.execute(cp);
 
             } catch (IOException e){
                 e.printStackTrace();
@@ -69,30 +86,42 @@ public class ServerManager {
         this.pool.shutdown();
     }
 
-    private void addTaskToRequestPool(Socket socket, DataInputStream is, String request){
-        ServerAction serverAction = null;
-
+    private void createWindow(JLabel label){
+        super.setVisible(true);
+        super.setSize(500, 150);
+        super.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        super.setLayout(new FlowLayout());
         try {
+            //create the font to use. Specify the size!
+            Font customFont = Font.createFont(Font.TRUETYPE_FONT, new File("fonts\\Undeveloped.ttf")).deriveFont(40f);
+            GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+            //register the font
+            ge.registerFont(Font.createFont(Font.TRUETYPE_FONT, new File("fonts\\Undeveloped.ttf")));
+            JLabel serverRunning = new JLabel("(Server Running)");
+            serverRunning.setHorizontalAlignment(JLabel.CENTER);
+            serverRunning.setVerticalAlignment(JLabel.CENTER);
+            serverRunning.setFont(customFont);
 
-            DataOutputStream os = new DataOutputStream(socket.getOutputStream());
+            Font customFont2 = Font.createFont(Font.TRUETYPE_FONT, new File("fonts\\neon_pixel-7.ttf")).deriveFont(40f);
+            ge.registerFont(Font.createFont(Font.TRUETYPE_FONT, new File("fonts\\neon_pixel-7.ttf")));
+            label.setHorizontalAlignment(JLabel.CENTER);
+            label.setVerticalAlignment(JLabel.BOTTOM);
+            label.setFont(customFont2);
 
-            if(request.equals(this.COMMANDS[0])){
-                serverAction = new Connections(socket, is, os, connection, is.readLine(), is.readLine());
-            }else if(request.equals(this.COMMANDS[1])){
-                serverAction = new Disconnections(socket, is, os,connection, is.readLine());
-            }else if(request.equals(this.COMMANDS[2])){
-                serverAction = new Registration(socket, is, os, connection, is.readLine(), is.readLine());
-            }else if((request.equals(this.COMMANDS[3]))){
-                serverAction = new Friends(socket, is, os, connection, is.readLine());
-            }else if((request.equals(this.COMMANDS[4]))){
-                serverAction = new AddFriend(socket, is, os, connection, is.readLine(), is.readLine());
-            }else if((request.equals(this.COMMANDS[5]))){
-                serverAction = new FriendRequests(socket, is, os, connection, is.readLine());
-            }else if((request.equals(this.COMMANDS[6]))){
-                serverAction = new SendPartyRequest(socket, is, os, connection, is.readLine(), is.readLine());
-            }
-        } catch (IOException e1) {
-            e1.printStackTrace();
+            super.add(serverRunning);
+            super.add(label);
+
+            super.revalidate();
+            super.repaint();
+
+            GraphicsDevice defaultScreen = ge.getDefaultScreenDevice();
+            Rectangle rect = defaultScreen.getDefaultConfiguration().getBounds();
+            int x = (int) rect.getMaxX() - super.getWidth();
+            int y = 0;
+            super.setLocation(x, y);
+
+        } catch (IOException | FontFormatException e) {
+            e.printStackTrace();
         }
 
     }

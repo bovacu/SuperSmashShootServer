@@ -41,7 +41,7 @@ public class Friends extends ServerAction {
             while(rs.next()) {
                 output.writeBytes(rs.getString(1) + "\r\n");
             }
-
+            output.writeBytes("END" + "\r\n");
             output.flush();
 
             rs.close();

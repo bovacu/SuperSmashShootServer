@@ -9,12 +9,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-public class FriendRequests extends ServerAction {
+public class PartyRequests extends ServerAction {
 
     private Connection con;
     private String usr;
 
-    public FriendRequests(Socket socket, DataInputStream is, DataOutputStream os, Connection con, String usr){
+    public PartyRequests(Socket socket, DataInputStream is, DataOutputStream os, Connection con, String usr){
         super(socket, is, os);
         this.con = con;
         this.usr = usr;
@@ -26,17 +26,9 @@ public class FriendRequests extends ServerAction {
         PreparedStatement stmt = null;
 
         try {
-            stmt = con.prepareStatement("SELECT F.FriendName " +
-                    "From Friends F " +
-                    "Where UserName='" + this.usr + "' AND Accepted=0");
-            rs = stmt.executeQuery();
-            while(rs.next()) {
-                output.writeBytes(rs.getString(1) + "\r\n");
-            }
-
             stmt = con.prepareStatement("SELECT F.UserName " +
                     "From Friends F " +
-                    "Where FriendName='" + this.usr + "' AND Accepted=0");
+                    "Where FriendName='" + this.usr + "'");
             rs = stmt.executeQuery();
             while(rs.next()) {
                 output.writeBytes(rs.getString(1) + "\r\n");
