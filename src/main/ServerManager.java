@@ -103,12 +103,12 @@ public class ServerManager extends JFrame {
         GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
 
         try {
-            customFont = Font.createFont(Font.TRUETYPE_FONT, new File("fonts\\Undeveloped.ttf")).deriveFont(40f);
-            ge.registerFont(Font.createFont(Font.TRUETYPE_FONT, new File("fonts\\Undeveloped.ttf")));
+            customFont = Font.createFont(Font.TRUETYPE_FONT, new File("fonts/Undeveloped.ttf")).deriveFont(40f);
+            ge.registerFont(customFont);
             serverRunning.setFont(customFont);
 
-            customFont2 = Font.createFont(Font.TRUETYPE_FONT, new File("fonts\\neon_pixel-7.ttf")).deriveFont(40f);
-            ge.registerFont(Font.createFont(Font.TRUETYPE_FONT, new File("fonts\\neon_pixel-7.ttf")));
+            customFont2 = Font.createFont(Font.TRUETYPE_FONT, new File("fonts/neon_pixel-7.ttf")).deriveFont(40f);
+            ge.registerFont(customFont2);
             label.setFont(customFont2);
 
         } catch (IOException | FontFormatException e) {
@@ -117,7 +117,8 @@ public class ServerManager extends JFrame {
             String fontName = "";
 
             for(Font f : fonts){
-                if(f.getFontName().equals("Undeveloped")){
+                System.out.println(f.getName());
+                if(f.getName().equals("Undeveloped Regular")){
                     fontName = f.getFontName();
                     break;
                 }else{
@@ -125,12 +126,12 @@ public class ServerManager extends JFrame {
                 }
             }
 
-            customFont = new Font(fontName + ".ttf", Font.BOLD, 40);
+            customFont = new Font(fontName + ".ttf", Font.PLAIN, 40);
             serverRunning.setFont(customFont);
 
 
             for(Font f : fonts){
-                if(f.getFontName().equals("neon_pixel-7")){
+                if(f.getFontName().equals("Neon Pixel-7")){
                     fontName = f.getFontName();
                     break;
                 }else{
@@ -138,7 +139,7 @@ public class ServerManager extends JFrame {
                 }
             }
 
-            customFont2 = new Font(fontName + ".ttf", Font.BOLD, 40);
+            customFont2 = new Font(fontName + ".ttf", Font.PLAIN, 40);
             label.setFont(customFont2);
 
             JOptionPane.showMessageDialog(this, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
