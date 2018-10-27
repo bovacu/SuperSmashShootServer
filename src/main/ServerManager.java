@@ -91,38 +91,69 @@ public class ServerManager extends JFrame {
         super.setSize(500, 150);
         super.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         super.setLayout(new FlowLayout());
+
+        Font customFont, customFont2;
+        JLabel serverRunning = new JLabel("(Server Running)");
+        serverRunning.setHorizontalAlignment(JLabel.CENTER);
+        serverRunning.setVerticalAlignment(JLabel.CENTER);
+
+        label.setHorizontalAlignment(JLabel.CENTER);
+        label.setVerticalAlignment(JLabel.BOTTOM);
+
+        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+
         try {
-            //create the font to use. Specify the size!
-            Font customFont = Font.createFont(Font.TRUETYPE_FONT, new File("fonts\\Undeveloped.ttf")).deriveFont(40f);
-            GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-            //register the font
+            customFont = Font.createFont(Font.TRUETYPE_FONT, new File("fonts\\Undeveloped.ttf")).deriveFont(40f);
             ge.registerFont(Font.createFont(Font.TRUETYPE_FONT, new File("fonts\\Undeveloped.ttf")));
-            JLabel serverRunning = new JLabel("(Server Running)");
-            serverRunning.setHorizontalAlignment(JLabel.CENTER);
-            serverRunning.setVerticalAlignment(JLabel.CENTER);
             serverRunning.setFont(customFont);
 
-            Font customFont2 = Font.createFont(Font.TRUETYPE_FONT, new File("fonts\\neon_pixel-7.ttf")).deriveFont(40f);
+            customFont2 = Font.createFont(Font.TRUETYPE_FONT, new File("fonts\\neon_pixel-7.ttf")).deriveFont(40f);
             ge.registerFont(Font.createFont(Font.TRUETYPE_FONT, new File("fonts\\neon_pixel-7.ttf")));
-            label.setHorizontalAlignment(JLabel.CENTER);
-            label.setVerticalAlignment(JLabel.BOTTOM);
             label.setFont(customFont2);
 
-            super.add(serverRunning);
-            super.add(label);
-
-            super.revalidate();
-            super.repaint();
-
-            GraphicsDevice defaultScreen = ge.getDefaultScreenDevice();
-            Rectangle rect = defaultScreen.getDefaultConfiguration().getBounds();
-            int x = (int) rect.getMaxX() - super.getWidth();
-            int y = 0;
-            super.setLocation(x, y);
-
         } catch (IOException | FontFormatException e) {
+
+            Font[] fonts = ge.getAllFonts();
+            String fontName = "";
+
+            for(Font f : fonts){
+                if(f.getFontName().equals("Undeveloped")){
+                    fontName = f.getFontName();
+                    break;
+                }else{
+                    fontName = fonts[0].getFontName();
+                }
+            }
+
+            customFont = new Font(fontName + ".ttf", Font.BOLD, 40);
+            serverRunning.setFont(customFont);
+
+
+            for(Font f : fonts){
+                if(f.getFontName().equals("neon_pixel-7")){
+                    fontName = f.getFontName();
+                    break;
+                }else{
+                    fontName = fonts[0].getFontName();
+                }
+            }
+
+            customFont2 = new Font(fontName + ".ttf", Font.BOLD, 40);
+            label.setFont(customFont2);
+
             JOptionPane.showMessageDialog(this, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
         }
 
+        super.add(serverRunning);
+        super.add(label);
+
+        super.revalidate();
+        super.repaint();
+
+        GraphicsDevice defaultScreen = ge.getDefaultScreenDevice();
+        Rectangle rect = defaultScreen.getDefaultConfiguration().getBounds();
+        int x = (int) rect.getMaxX() - super.getWidth();
+        int y = 0;
+        super.setLocation(x, y);
     }
 }
