@@ -4,9 +4,12 @@ import java.io.*;
 import java.util.Properties;
 
 public class Main {
-
     public static void main(String args[]){
-        ServerManager serverManager = new ServerManager();
+        String databaseUrl = "C:/Users/vazqu/IdeaProjects/SuperSmashShootServer/";
+        if(args.length == 1)
+            databaseUrl = args[0];
+
+        ServerManager serverManager = new ServerManager(databaseUrl);
         serverManager.runServer();
     }
 

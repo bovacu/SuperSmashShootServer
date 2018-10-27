@@ -3,6 +3,8 @@ package main;
 import javax.swing.*;
 import java.awt.*;
 import java.io.*;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.sql.Connection;
@@ -14,16 +16,8 @@ import java.util.concurrent.Executors;
 
 public class ServerManager extends JFrame {
 
-    static {
-        try {
-            Class.forName("net.ucanaccess.jdbc.UcanaccessDriver");
-        } catch (ClassNotFoundException e) {
-            System.out.printf("No se puedo conectar a la BD");
-        }
-    }
-
     private final String COMMANDS[] = {"CONNECT", "DISCONNECT", "REGISTER", "FRIENDS", "ADD FRIEND", "REQUESTS", "PARTY"};
-    private final int PORT = 6767;
+    private final int PORT = 6868;
     private final int MAX_THREADS = 50;
 
     static int numberOfPLayers = 0;
@@ -31,13 +25,20 @@ public class ServerManager extends JFrame {
 
     private ExecutorService pool;
     private Connection connection;
-    private final String url="jdbc:ucanaccess://C:/Users/vazqu/IdeaProjects/SuperSmashShootServer/DataBase.accdb";
+    private final String url;
     private ServerSocket server;
 
     private boolean loop;
     private JLabel count;
 
-    ServerManager(){
+    ServerManager(String path){
+        this.url = "jdbc:ucanaccess://" + path + "DataBase.accdb";
+
+        try {
+            Class.forName("net.ucanaccess.jdbc.UcanaccessDriver");
+        } catch (ClassNotFoundException e) {
+            System.out.printf("No se puedo conectar a la BD");
+        }
 
         this.count = new JLabel("Number of players: 0");
         this.createWindow(this.count);
