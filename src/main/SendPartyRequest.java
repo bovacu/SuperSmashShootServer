@@ -15,12 +15,14 @@ public class SendPartyRequest extends ServerAction{
     private Connection connection;
     private String usr;
     private String frd;
+    private DataOutputStream outputForGuest;
 
-    public SendPartyRequest(Socket socket, DataInputStream input, DataOutputStream output, Connection connection, String usr, String frd) {
+    public SendPartyRequest(Socket socket, DataInputStream input, DataOutputStream output, DataOutputStream output2, Connection connection, String usr, String frd) {
         super(socket, input, output);
         this.connection = connection;
         this.usr = usr;
         this.frd = frd;
+        this.outputForGuest = output2;
     }
 
     @Override
@@ -33,27 +35,26 @@ public class SendPartyRequest extends ServerAction{
             int result = preparedStmt.executeUpdate();
             preparedStmt.close();
 
-            if(result > 0)
-                output.writeBytes("OK" + "\r\n");
-            else
-                output.writeBytes("REPEATED" + "\r\n");
+            if(result > 0) {
+                output.writeBytes("INVITATION SENT" + "\r\n");
+                this.outputForGuest.writeBytes("INVITATION RECEIVED" + "\r\n");
+                this.outputForGuest.writeBytes(this.usr + "\r\n");
+                this.outputForGuest.flush();
+            } else
+                output.writeBytes("INVITATION ERROR" + "\r\n");
 
             output.flush();
 
-            super.close();
         } catch(UcanaccessSQLException e){
             try {
-                output.writeBytes("REPEATED" + "\r\n");
+                output.writeBytes("INVITATION REPEATED" + "\r\n");
                 output.flush();
 
             } catch (IOException e1) {
                 e1.printStackTrace();
             }
         } catch (SQLException | IOException e) {
-            super.close();
             e.printStackTrace();
-        } finally{
-            super.close();
         }
     }
 }

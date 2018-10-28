@@ -22,19 +22,21 @@ public class Disconnections extends ServerAction {
     @Override
     public void run() {
         try {
-            String query = "update Players set Online = ? where UserName = ?";
+            String query = "update Players set Online = ?, Party = -1 where UserName = ?";
             PreparedStatement preparedStmt = con.prepareStatement(query);
             preparedStmt.setInt   (1, 0);
             preparedStmt.setString(2, this.usr);
             preparedStmt.executeUpdate();
             preparedStmt.close();
 
-            System.out.println(this.usr);
-            super.close();
+            String removeParties = "DELETE FROM PartyRequest WHERE UserName = ?";
+            PreparedStatement preparedStmt2 = con.prepareStatement(removeParties);
+            preparedStmt2.setString(1, this.usr);
+            preparedStmt2.executeUpdate();
+            preparedStmt2.close();
+
         } catch (SQLException e) {
             e.printStackTrace();
-        } finally{
-            super.close();
         }
     }
 }

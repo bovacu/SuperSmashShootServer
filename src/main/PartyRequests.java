@@ -27,7 +27,7 @@ public class PartyRequests extends ServerAction {
 
         try {
             stmt = con.prepareStatement("SELECT F.UserName " +
-                    "From Friends F " +
+                    "From PartyRequest F " +
                     "Where FriendName='" + this.usr + "'");
             rs = stmt.executeQuery();
             while(rs.next()) {

@@ -12,7 +12,7 @@ import java.util.List;
 public class ClientSpeaker extends Thread {
 
     private final String REQUESTS[] = {"CLOSE", "FRIEND LIST", "CONNECT", "REGISTER", "FRIEND REQUEST", "PARTY REQUEST",
-    "SEND PARTY REQUEST"};
+    "SEND PARTY REQUEST", "SEND MESSAGE", "SEND PARTY INVITATION", "CREATE PARTY", "JOIN PARTY"};
 
     private Socket socketOfSpeaker, socketOfListener;
     private DataInputStream inputOfSpeaker, inputOfListener;
@@ -53,14 +53,17 @@ public class ClientSpeaker extends Thread {
                 System.out.println(requests);
                 if(requests != null){
                     if(requests.equals(this.REQUESTS[0])) {
-                        this.outputOfSpeaker.writeBytes("CLOSE OK" + "\r\n");
-                        this.outputOfListener.writeBytes("CLOSE OK" + "\r\n");
                         ServerManager.numberOfPLayers--;
-                        System.out.println(ServerManager.numberOfPLayers);
                         this.label.setText("Number of players: " + ServerManager.numberOfPLayers);
                         this.label.revalidate();
                         this.label.repaint();
                         ServerManager.currentPlayers.remove(this);
+                        Disconnections d = new Disconnections(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
+                        d.run();
+                        this.outputOfSpeaker.writeBytes("CLOSE OK" + "\r\n");
+                        this.outputOfListener.writeBytes("CLOSE OK" + "\r\n");
+                        this.outputOfSpeaker.flush();
+                        this.outputOfListener.flush();
                         break;
                     }
 
@@ -105,9 +108,45 @@ public class ClientSpeaker extends Thread {
                                 List<String> toSend = new ArrayList<>();
                                 toSend.add("PARTY REQUEST SENT");
                                 toSend.add(this.userName);
-                                c.writeInstantAction(c, toSend);
+                                c.writeInstantAction(toSend);
                                 break;
                             }
+                    }
+
+                    else if(requests.equals(this.REQUESTS[7])){
+                        String userSender = this.inputOfSpeaker.readLine();
+                        String infoSent = this.inputOfSpeaker.readLine();
+
+                    }
+
+                    else if(requests.equals(this.REQUESTS[8])){
+                        String host = this.inputOfSpeaker.readLine();
+                        String guest = this.inputOfSpeaker.readLine();
+                        boolean found = false;
+                        for(ClientSpeaker c : ServerManager.currentPlayers)
+                            if(c.getName().equals(guest)) {
+                                found = true;
+                                SendPartyRequest spr = new SendPartyRequest(this.socketOfSpeaker, this.inputOfSpeaker,
+                                        this.outputOfSpeaker, c.outputOfListener, this.connection, host, guest);
+                                spr.run();
+                                break;
+                            }
+
+                            if(!found)
+                                this.outputOfSpeaker.writeBytes("INVITATION OFFLINE" + "\r\n");
+                    }
+
+                    else if(requests.equals(this.REQUESTS[9])){
+                        CreateParty c = new CreateParty(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
+                        c.run();
+                        this.outputOfSpeaker.writeBytes("PARTY CREATED" + "\r\n");
+                        this.outputOfSpeaker.flush();
+                    }
+
+                    else if(requests.equals(this.REQUESTS[10])){
+                        String host = this.inputOfSpeaker.readLine();
+                        JoinParty c = new JoinParty(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName, host);
+                        c.run();
                     }
 
                     else{
@@ -142,22 +181,25 @@ public class ClientSpeaker extends Thread {
             this.socketOfSpeaker.close();
             this.inputOfSpeaker.close();
             this.outputOfSpeaker.close();
+            this.inputOfListener.close();
+            this.outputOfListener.close();
+            this.socketOfListener.close();
         } catch (IOException e) {
             JOptionPane.showMessageDialog(this.frame, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    public void writeInstantAction(ClientSpeaker c, List<String> commands){
+    public void writeInstantAction(List<String> commands){
         for(String s : commands){
             try {
-                c.outputOfListener.writeBytes(s + "\r\n");
+                this.outputOfListener.writeBytes(s + "\r\n");
             } catch (IOException e) {
                 JOptionPane.showMessageDialog(this.frame, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
             }
         }
 
         try {
-            c.outputOfListener.flush();
+            this.outputOfListener.flush();
         } catch (IOException e) {
             JOptionPane.showMessageDialog(this.frame, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
         }
