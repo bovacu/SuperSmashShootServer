@@ -29,7 +29,7 @@ public class Connections extends ServerAction {
         try {
             stmt = con.prepareStatement("SELECT P.UserName, Password " +
                     "From Players P " +
-                    "Where UserName='" + this.usr + "' AND Password='" + this.psw + "'");
+                    "Where UserName='" + this.usr + "' AND Password='" + this.psw + "' AND Online=0");
             rs = stmt.executeQuery();
             if(rs.next()) {
                 String query = "update Players set Online = ? where UserName = ?";

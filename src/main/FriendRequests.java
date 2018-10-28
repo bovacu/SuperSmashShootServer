@@ -26,14 +26,6 @@ public class FriendRequests extends ServerAction {
         PreparedStatement stmt = null;
 
         try {
-            stmt = con.prepareStatement("SELECT F.FriendName " +
-                    "From Friends F " +
-                    "Where UserName='" + this.usr + "' AND Accepted=0");
-            rs = stmt.executeQuery();
-            while(rs.next()) {
-                output.writeBytes(rs.getString(1) + "\r\n");
-            }
-
             stmt = con.prepareStatement("SELECT F.UserName " +
                     "From Friends F " +
                     "Where FriendName='" + this.usr + "' AND Accepted=0");

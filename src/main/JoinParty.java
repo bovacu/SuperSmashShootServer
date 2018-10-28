@@ -45,7 +45,6 @@ public class JoinParty extends ServerAction {
 
             rs2.next();
             if(rs.next() && rs2.getInt(1) < 4) {
-                System.out.println("entra a actualizar el jugador con " + rs2.getInt(1) + " miembros");
                 rs2.close();
                 stmt2.close();
 

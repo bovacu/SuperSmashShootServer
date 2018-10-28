@@ -10,6 +10,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class AddFriend extends ServerAction {
 
@@ -29,35 +31,64 @@ public class AddFriend extends ServerAction {
         PreparedStatement stmt = null;
 
         try {
-            stmt = con.prepareStatement("SELECT P.UserName " +
-                    "From Players P " +
-                    "Where UserName='" + this.frd + "'");
-            rs = stmt.executeQuery();
-            if(rs.next() && !this.frd.equals(this.usr)) {
-                this.addRow();
-                output.writeBytes("OK");
-            }else{
-                output.writeBytes("NO PLAYER");
-            }
-            output.flush();
+            if(!this.frd.equals(this.usr)){
+                stmt = con.prepareStatement("SELECT P.* " +
+                        "From Players P " +
+                        "Where UserName='" + this.frd + "'");
+                rs = stmt.executeQuery();
+                System.out.println("entra aqui");
+                if(rs.next()){
+                    rs.close();
+                    stmt.close();
 
-            rs.close();
-            stmt.close();
-            super.close();
+                    stmt = con.prepareStatement("SELECT F.* " +
+                            "From Friends F " +
+                            "Where UserName='" + this.frd + "' AND FriendName='" + this.usr + "'");
+                    rs = stmt.executeQuery();
+                    System.out.println("entra aqui");
+                    if(!rs.next()) {
+                        System.out.println("entra aqui");
+                        this.addRow();
+                        System.out.println("entra aqui");
+                        output.writeBytes("FRIEND REQUEST SENT" + "\r\n");
+
+                        for(ClientSpeaker c : ServerManager.currentPlayers){
+                            if(c.getName().equals(this.frd)){
+                                List<String> toSend = new ArrayList<>();
+                                toSend.add("NEW FRIEND");
+                                toSend.add(this.usr);
+                                c.writeInstantAction(toSend);
+                            }
+                        }
+                    }else{
+                        output.writeBytes("ALREADY FRIEND" + "\r\n");
+                    }
+                    output.flush();
+                }else{
+                    output.writeBytes("NO PLAYER" + "\r\n");
+                    output.flush();
+                }
+            }else{
+                output.writeBytes("NO PLAYER" + "\r\n");
+                output.flush();
+            }
         }catch (UcanaccessSQLException e){
             try {
-                output.writeBytes("ALREADY FRIEND");
+                e.printStackTrace();
+                output.writeBytes("ALREADY FRIEND" + "\r\n");
+                output.flush();
             } catch (IOException e1) {
                 e1.printStackTrace();
             }
         } catch (SQLException | IOException e) {
             e.printStackTrace();
         } finally{
-            super.close();
 
             try {
-                rs.close();
-                stmt.close();
+                if(rs != null){
+                    rs.close();
+                    stmt.close();
+                }
             } catch (SQLException e) {
                 e.printStackTrace();
             }

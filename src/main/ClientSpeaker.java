@@ -11,8 +11,19 @@ import java.util.List;
 
 public class ClientSpeaker extends Thread {
 
-    private final String REQUESTS[] = {"CLOSE", "FRIEND LIST", "CONNECT", "REGISTER", "FRIEND REQUEST", "PARTY REQUEST",
-    "SEND PARTY REQUEST", "SEND MESSAGE", "SEND PARTY INVITATION", "CREATE PARTY", "JOIN PARTY"};
+    private final String REQUESTS[] = { "CLOSE",                        //0
+                                        "FRIEND LIST",                  //1
+                                        "CONNECT",                      //2
+                                        "REGISTER",                     //3
+                                        "FRIEND REQUEST",               //4
+                                        "PARTY REQUEST",                //5
+                                        "SEND PARTY REQUEST",           //6
+                                        "SEND MESSAGE",                 //7
+                                        "SEND PARTY INVITATION",        //8
+                                        "CREATE PARTY",                 //9
+                                        "JOIN PARTY",                   //10
+                                        "ADD FRIEND"                    //11
+    };
 
     private Socket socketOfSpeaker, socketOfListener;
     private DataInputStream inputOfSpeaker, inputOfListener;
@@ -147,6 +158,12 @@ public class ClientSpeaker extends Thread {
                         String host = this.inputOfSpeaker.readLine();
                         JoinParty c = new JoinParty(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName, host);
                         c.run();
+                    }
+
+                    else if(requests.equals(this.REQUESTS[11])){
+                        String friend = this.inputOfSpeaker.readLine();
+                        AddFriend af = new AddFriend(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName, friend);
+                        af.run();
                     }
 
                     else{
