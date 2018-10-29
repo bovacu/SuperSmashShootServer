@@ -125,9 +125,22 @@ public class ClientSpeaker extends Thread {
                     }
 
                     else if(requests.equals(this.REQUESTS[7])){
-                        String userSender = this.inputOfSpeaker.readLine();
                         String infoSent = this.inputOfSpeaker.readLine();
 
+                        String name;
+                        while(!(name = this.inputOfSpeaker.readLine()).equals("END")) {
+                            for (ClientSpeaker c : ServerManager.currentPlayers) {
+                                if (c.getName().equals(name)) {
+                                    List<String> toSend = new ArrayList<>();
+                                    toSend.add("RECEIVE MESSAGE");
+                                    toSend.add(this.userName);
+                                    toSend.add(infoSent);
+                                    c.writeInstantAction(toSend);
+                                }
+                            }
+                        }
+                        this.outputOfSpeaker.writeBytes("MESSAGE SENT" + "\r\n");
+                        this.outputOfSpeaker.flush();
                     }
 
                     else if(requests.equals(this.REQUESTS[8])){

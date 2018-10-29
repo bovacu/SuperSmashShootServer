@@ -5,7 +5,9 @@ import java.util.Properties;
 
 public class Main {
     public static void main(String args[]){
-        String databaseUrl = "C:/Users/vazqu/IdeaProjects/SuperSmashShootServer/";
+        //D:\GamesProjects\Java\SuperSmashShootServer
+        //C:/Users/vazqu/IdeaProjects/SuperSmashShootServer/
+        String databaseUrl = "D:/GamesProjects/Java/SuperSmashShootServer/";
         if(args.length == 1)
             databaseUrl = args[0];
 
