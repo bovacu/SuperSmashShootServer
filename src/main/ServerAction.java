@@ -5,7 +5,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 
-public abstract class ServerAction implements Runnable {
+public abstract class ServerAction {
 
     protected DataInputStream input;
     protected DataOutputStream output;
@@ -26,4 +26,6 @@ public abstract class ServerAction implements Runnable {
             e.printStackTrace();
         }
     }
+
+    public abstract void run();
 }

@@ -57,8 +57,16 @@ public class JoinParty extends ServerAction {
                 rs.close();
                 stmt.close();
 
+                query = "DELETE FROM PartyRequest WHERE UserName = ? AND FriendName = ?";
+                stmt = this.conn.prepareStatement(query);
+                stmt.setString(1, this.host);
+                stmt.setString(2, this.usr);
+                stmt.executeUpdate();
+                stmt.close();
+
                 this.output.writeBytes("JOIN OK" + "\r\n");
                 this.output.writeBytes(this.host + "\r\n");
+                this.output.writeBytes(this.partyId + "\r\n");
 
                 stmt = this.conn.prepareStatement("SELECT P.UserName " +
                         "From Players P " +
@@ -82,6 +90,11 @@ public class JoinParty extends ServerAction {
 
                 this.output.writeBytes("END" + "\r\n");
                 this.output.flush();
+                rs.close();
+                stmt.close();
+
+
+
             }else{
                 this.output.writeBytes("PARTY FULL" + "\r\n");
                 this.output.flush();

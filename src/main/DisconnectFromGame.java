@@ -8,12 +8,12 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
-public class Disconnections extends ServerAction {
+public class DisconnectFromGame extends ServerAction {
 
     private Connection con;
     private String usr;
 
-    public Disconnections(Socket socket, DataInputStream is, DataOutputStream os, Connection con, String usr){
+    public DisconnectFromGame(Socket socket, DataInputStream is, DataOutputStream os, Connection con, String usr){
         super(socket, is, os);
         this.con = con;
         this.usr = usr;

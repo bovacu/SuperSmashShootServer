@@ -9,12 +9,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-public class Connections extends ServerAction {
+public class ConnectToGame extends ServerAction {
 
     private String usr, psw;
     private Connection con;
 
-    public Connections(Socket socket, DataInputStream is, DataOutputStream os, Connection con, String usr, String psw){
+    public ConnectToGame(Socket socket, DataInputStream is, DataOutputStream os, Connection con, String usr, String psw){
         super(socket, is, os);
         this.usr = usr;
         this.psw = psw;
@@ -31,6 +31,7 @@ public class Connections extends ServerAction {
                     "From Players P " +
                     "Where UserName='" + this.usr + "' AND Password='" + this.psw + "' AND Online=0");
             rs = stmt.executeQuery();
+
             if(rs.next()) {
                 String query = "update Players set Online = ? where UserName = ?";
                 PreparedStatement preparedStmt = con.prepareStatement(query);

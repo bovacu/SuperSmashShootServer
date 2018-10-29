@@ -9,12 +9,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-public class Friends extends ServerAction {
+public class FriendList extends ServerAction {
 
     private Connection con;
     private String usr;
 
-    public Friends(Socket socket, DataInputStream is, DataOutputStream os, Connection con, String usr){
+    public FriendList(Socket socket, DataInputStream is, DataOutputStream os, Connection con, String usr){
         super(socket, is, os);
         this.con = con;
         this.usr = usr;

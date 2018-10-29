@@ -42,7 +42,7 @@ public class AddFriend extends ServerAction {
                     stmt.close();
 
                     stmt = con.prepareStatement("SELECT F.* " +
-                            "From Friends F " +
+                            "From FriendList F " +
                             "Where UserName='" + this.frd + "' AND FriendName='" + this.usr + "'");
                     rs = stmt.executeQuery();
                     System.out.println("entra aqui");
@@ -96,7 +96,7 @@ public class AddFriend extends ServerAction {
     }
 
     private void addRow() throws SQLException {
-        String query = "insert INTO Friends([UserName], [FriendName], [Accepted]) VALUES(?, ?, ?)";
+        String query = "insert INTO FriendList([UserName], [FriendName], [Accepted]) VALUES(?, ?, ?)";
         PreparedStatement preparedStmt = con.prepareStatement(query);
         preparedStmt.setString(1, this.usr);
         preparedStmt.setString(2, this.frd);

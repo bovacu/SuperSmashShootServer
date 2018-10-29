@@ -22,7 +22,8 @@ public class ClientSpeaker extends Thread {
                                         "SEND PARTY INVITATION",        //8
                                         "CREATE PARTY",                 //9
                                         "JOIN PARTY",                   //10
-                                        "ADD FRIEND"                    //11
+                                        "ADD FRIEND",                   //11
+                                        "ACCEPT FRIEND"                 //12
     };
 
     private Socket socketOfSpeaker, socketOfListener;
@@ -69,7 +70,7 @@ public class ClientSpeaker extends Thread {
                         this.label.revalidate();
                         this.label.repaint();
                         ServerManager.currentPlayers.remove(this);
-                        Disconnections d = new Disconnections(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
+                        DisconnectFromGame d = new DisconnectFromGame(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
                         d.run();
                         this.outputOfSpeaker.writeBytes("CLOSE OK" + "\r\n");
                         this.outputOfListener.writeBytes("CLOSE OK" + "\r\n");
@@ -80,7 +81,7 @@ public class ClientSpeaker extends Thread {
 
                     else if(requests.equals(this.REQUESTS[1])){
                         this.outputOfSpeaker.writeBytes("SENDING FRIEND LIST" + "\r\n");
-                        Friends f = new Friends(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
+                        FriendList f = new FriendList(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
                         f.run();
                     }
 
@@ -89,7 +90,7 @@ public class ClientSpeaker extends Thread {
                         String psw = this.inputOfSpeaker.readLine();
                         this.userName = usr;
                         super.setName(this.userName);
-                        Connections c = new Connections(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, usr, psw);
+                        ConnectToGame c = new ConnectToGame(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, usr, psw);
                         c.run();
                     }
 
@@ -102,13 +103,13 @@ public class ClientSpeaker extends Thread {
 
                     else if(requests.equals(this.REQUESTS[4])){
                         this.outputOfSpeaker.writeBytes("SENDING REQUEST LIST" + "\r\n");
-                        FriendRequests fr = new FriendRequests(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
+                        FriendRequestList fr = new FriendRequestList(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
                         fr.run();
                     }
 
                     else if(requests.equals(this.REQUESTS[5])){
                         this.outputOfSpeaker.writeBytes("SENDING PARTY REQUESTS" + "\r\n");
-                        PartyRequests pr = new PartyRequests(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
+                        PartyRequestList pr = new PartyRequestList(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
                         pr.run();
                     }
 
@@ -126,16 +127,18 @@ public class ClientSpeaker extends Thread {
 
                     else if(requests.equals(this.REQUESTS[7])){
                         String infoSent = this.inputOfSpeaker.readLine();
-
+                        String colors[] = {"[GREEN]", "[ORANGE]", "[PINK]"};
+                        int colorCounter = 0;
                         String name;
                         while(!(name = this.inputOfSpeaker.readLine()).equals("END")) {
                             for (ClientSpeaker c : ServerManager.currentPlayers) {
                                 if (c.getName().equals(name)) {
                                     List<String> toSend = new ArrayList<>();
                                     toSend.add("RECEIVE MESSAGE");
-                                    toSend.add(this.userName);
+                                    toSend.add(colors[colorCounter] + this.userName + "[]");
                                     toSend.add(infoSent);
                                     c.writeInstantAction(toSend);
+                                    colorCounter++;
                                 }
                             }
                         }
@@ -179,6 +182,12 @@ public class ClientSpeaker extends Thread {
                         af.run();
                     }
 
+                    else if(requests.equals(this.REQUESTS[12])){
+                        String friend = this.inputOfSpeaker.readLine();
+                        AcceptFriend af = new AcceptFriend(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName, friend);
+                        af.run();
+                    }
+
                     else{
                         this.outputOfSpeaker.writeBytes("NAN" + "\r\n");
                         this.outputOfSpeaker.flush();
@@ -193,8 +202,11 @@ public class ClientSpeaker extends Thread {
                     this.inputOfListener.close();
                     this.outputOfListener.close();
                     this.socketOfListener.close();
+                    this.connection.close();
                 } catch (IOException e1) {
                     JOptionPane.showMessageDialog(this.frame, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
+                } catch (SQLException e1) {
+                    e1.printStackTrace();
                 }
                 break;
             }
