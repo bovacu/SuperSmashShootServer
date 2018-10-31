@@ -23,7 +23,8 @@ public class ClientSpeaker extends Thread {
                                         "CREATE PARTY",                 //9
                                         "JOIN PARTY",                   //10
                                         "ADD FRIEND",                   //11
-                                        "ACCEPT FRIEND"                 //12
+                                        "ACCEPT FRIEND",                //12
+                                        "LEAVE PARTY"                   //13
     };
 
     private Socket socketOfSpeaker, socketOfListener;
@@ -188,6 +189,18 @@ public class ClientSpeaker extends Thread {
                         af.run();
                     }
 
+                    else if(requests.equals(this.REQUESTS[13])){
+                        List<String> partyMembers = new ArrayList<>();
+
+                        String friend;
+
+                        while(!(friend = this.inputOfSpeaker.readLine()).equals("END"))
+                            partyMembers.add(friend);
+
+                        LeaveParty lp = new LeaveParty(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName, partyMembers);
+                        lp.run();
+                    }
+
                     else{
                         this.outputOfSpeaker.writeBytes("NAN" + "\r\n");
                         this.outputOfSpeaker.flush();
@@ -210,13 +223,6 @@ public class ClientSpeaker extends Thread {
                 }
                 break;
             }
-
-            try {
-                Thread.sleep(500);
-            } catch (InterruptedException e) {
-                JOptionPane.showMessageDialog(this.frame, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
-            }
-
         }
 
         try {

@@ -7,6 +7,8 @@ import java.net.Socket;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class AcceptFriend extends ServerAction {
 
@@ -30,8 +32,18 @@ public class AcceptFriend extends ServerAction {
             int result = stmt.executeUpdate();
             stmt.close();
 
-            if(result == 1)
+            if(result == 1) {
                 super.output.writeBytes("ACCEPT FRIEND OK" + "\r\n");
+                for(ClientSpeaker c : ServerManager.currentPlayers){
+                    if(c.getName().equals(this.frd)){
+                        List<String> toSend = new ArrayList<>();
+                        toSend.add("ACCEPTED FRIEND REQUEST");
+                        toSend.add(this.usr);
+                        c.writeInstantAction(toSend);
+                        break;
+                    }
+                }
+            }
             else
                 super.output.writeBytes("ACCEPT FRIEND ERROR" + "\r\n");
 

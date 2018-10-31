@@ -3,12 +3,8 @@ package main;
 import javax.swing.*;
 import java.awt.*;
 import java.io.*;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -24,7 +20,6 @@ public class ServerManager extends JFrame {
     static List<ClientSpeaker> currentPlayers;
 
     private ExecutorService pool;
-    private Connection connection;
     private final String url;
     private ServerSocket server;
 
@@ -43,6 +38,7 @@ public class ServerManager extends JFrame {
         this.count = new JLabel("Number of players: 0");
         this.createWindow(this.count);
         ServerManager.currentPlayers = new ArrayList<>();
+
         try {
             this.server = new ServerSocket(this.PORT);
         } catch (IOException e) {
@@ -76,11 +72,9 @@ public class ServerManager extends JFrame {
         }
 
         try {
-            if(this.connection != null)
-                this.connection.close();
             if(this.server != null)
                 this.server.close();
-        } catch (SQLException | IOException e) {
+        } catch (IOException e) {
             JOptionPane.showMessageDialog(this, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
         }
 
