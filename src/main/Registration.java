@@ -35,6 +35,11 @@ public class Registration extends ServerAction {
             preparedStmt.close();
 
             if(result > 0) {
+                query = "insert INTO Stats([UserName], [Matchs], [Wins], [Looses], [DoneDamage], [ReceivedDamage]) VALUES(?, 0, 0, 0, 0, 0)";
+                preparedStmt = con.prepareStatement(query);
+                preparedStmt.setString(1, this.usr);
+                preparedStmt.executeUpdate();
+                preparedStmt.close();
                 output.writeBytes("REGISTER OK" + "\r\n");
                 output.writeBytes(this.usr + "\r\n");
             }else

@@ -24,7 +24,9 @@ public class ClientSpeaker extends Thread {
                                         "JOIN PARTY",                   //10
                                         "ADD FRIEND",                   //11
                                         "ACCEPT FRIEND",                //12
-                                        "LEAVE PARTY"                   //13
+                                        "LEAVE PARTY",                  //13
+                                        "STATS LIST",                   //14
+                                        "REMOVE FRIEND"                 //15
     };
 
     private Socket socketOfSpeaker, socketOfListener;
@@ -199,6 +201,17 @@ public class ClientSpeaker extends Thread {
 
                         LeaveParty lp = new LeaveParty(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName, partyMembers);
                         lp.run();
+                    }
+
+                    else if(requests.equals(this.REQUESTS[14])){
+                        StatsList sl = new StatsList(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
+                        sl.run();
+                    }
+
+                    else if(requests.equals(this.REQUESTS[15])){
+                        String frd = this.inputOfSpeaker.readLine();
+                        RemoveFriend sl = new RemoveFriend(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName, frd);
+                        sl.run();
                     }
 
                     else{
