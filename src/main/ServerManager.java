@@ -32,7 +32,7 @@ public class ServerManager extends JFrame {
         try {
             Class.forName("net.ucanaccess.jdbc.UcanaccessDriver");
         } catch (ClassNotFoundException e) {
-            System.out.printf("No se puedo conectar a la BD");
+            System.out.print("No se puedo conectar a la BD");
         }
 
         this.count = new JLabel("Number of players: 0");

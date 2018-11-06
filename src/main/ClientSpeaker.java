@@ -1,9 +1,7 @@
 package main;
 
 import javax.swing.*;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.Socket;
 import java.sql.*;
 import java.util.ArrayList;
@@ -26,7 +24,11 @@ public class ClientSpeaker extends Thread {
                                         "ACCEPT FRIEND",                //12
                                         "LEAVE PARTY",                  //13
                                         "STATS LIST",                   //14
-                                        "REMOVE FRIEND"                 //15
+                                        "REMOVE FRIEND",                //15
+                                        "LOAD CHARACTER SELECTOR",      //16
+                                        "LOAD MAP SELECTOR",            //17
+                                        "START FIGHT",                  //18
+                                        "SEND PLAYER DATA PACKAGE"      //19
     };
 
     private Socket socketOfSpeaker, socketOfListener;
@@ -37,11 +39,20 @@ public class ClientSpeaker extends Thread {
     private JLabel label;
     private JFrame frame;
 
+    private boolean readyForFightF;
+
+    private List<ClientSpeaker> playersToSendInfo;
+
+    private ObjectInputStream objectInputStream;
+    private ObjectOutputStream objectOutputStream;
+
     ClientSpeaker(Socket socketOfSpeaker, Socket socketOfListener,  String url, JLabel label, JFrame frame){
         this.socketOfSpeaker = socketOfSpeaker;
         this.socketOfListener = socketOfListener;
         this.label = label;
         this.frame = frame;
+        this.readyForFightF = false;
+        this.playersToSendInfo = new ArrayList<>();
 
         try {
             this.connection = DriverManager.getConnection(url);
@@ -65,7 +76,7 @@ public class ClientSpeaker extends Thread {
         while(true){
             try {
                 String requests = this.inputOfSpeaker.readLine();
-                System.out.println(requests);
+                //System.out.println(requests);
                 if(requests != null){
                     if(requests.equals(this.REQUESTS[0])) {
                         ServerManager.numberOfPLayers--;
@@ -214,7 +225,111 @@ public class ClientSpeaker extends Thread {
                         sl.run();
                     }
 
+                    else if(requests.equals(this.REQUESTS[16])){
+                        List<String> partyMembers = new ArrayList<>();
+                        String friend;
+                        while(!(friend = this.inputOfSpeaker.readLine()).equals("END"))
+                            partyMembers.add(friend);
+
+                        for(ClientSpeaker c : ServerManager.currentPlayers){
+                            for(String name : partyMembers){
+                                if(c.getName().equals(name)){
+                                    List<String> toSend = new ArrayList<>();
+                                    toSend.add("LOAD CHARACTER SELECTOR");
+                                    c.writeInstantAction(toSend);
+                                }
+                            }
+                        }
+
+                        this.outputOfSpeaker.writeBytes("OK" + "\r\n");
+                        this.outputOfSpeaker.flush();
+                    }
+
+                    else if(requests.equals(this.REQUESTS[17])){
+                        this.readyForFightF = true;
+                        boolean goToMapSelector = true;
+
+                        List<String> partyMembers = new ArrayList<>();
+                        String friend;
+                        while(!(friend = this.inputOfSpeaker.readLine()).equals("END"))
+                            partyMembers.add(friend);
+
+                        for(ClientSpeaker c : ServerManager.currentPlayers){
+                            for(String name : partyMembers){
+                                if(c.getName().equals(name)){
+                                    this.playersToSendInfo.add(c);
+                                }
+                            }
+                        }
+
+                        for(ClientSpeaker c : ServerManager.currentPlayers){
+                            for(String name : partyMembers){
+                                if(c.getName().equals(name)){
+                                    if(!c.readyForFightF){
+                                        goToMapSelector = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        if(goToMapSelector){
+                            List<String> toSend = new ArrayList<>();
+                            toSend.add("LOAD MAP SELECTOR");
+                            this.writeInstantAction(toSend);
+                            for(ClientSpeaker c : ServerManager.currentPlayers){
+                                for(String name : partyMembers){
+                                    if(c.getName().equals(name)){
+                                        c.writeInstantAction(toSend);
+                                    }
+                                }
+                            }
+                        }
+
+                        this.outputOfSpeaker.writeBytes("OK" + "\r\n");
+                        this.outputOfSpeaker.flush();
+                    }
+
+                    else if(requests.equals(this.REQUESTS[18])){
+                        String map = this.inputOfSpeaker.readLine();
+
+                        this.outputOfSpeaker.writeBytes("START FIGHT" + "\r\n");
+                        this.outputOfSpeaker.flush();
+
+                        List<String> toSend =  new ArrayList<>();
+                        toSend.add("START FIGHT");
+                        toSend.add(map);
+                        toSend.add(String.valueOf(this.playersToSendInfo.size()));
+
+                        this.writeInstantAction(toSend);
+
+                        for(ClientSpeaker c : this.playersToSendInfo)
+                            c.writeInstantAction(toSend);
+                    }
+
+                    else if(requests.equals(this.REQUESTS[19])){
+                        String usr = this.inputOfSpeaker.readLine();
+                        int x = Integer.parseInt(this.inputOfSpeaker.readLine());
+                        int y = Integer.parseInt(this.inputOfSpeaker.readLine());
+                        String anim = this.inputOfSpeaker.readLine();
+                        boolean flipAnim = Boolean.parseBoolean(this.inputOfSpeaker.readLine());
+
+                        for(ClientSpeaker c : this.playersToSendInfo) {
+                            c.outputOfListener.writeBytes("DATA PACKAGES INFO" + "\r\n");
+                            c.outputOfListener.writeBytes(usr + "\r\n");
+                            c.outputOfListener.writeBytes(String.valueOf(x) + "\r\n");
+                            c.outputOfListener.writeBytes(String.valueOf(y) + "\r\n");
+                            c.outputOfListener.writeBytes(anim + "\r\n");
+                            c.outputOfListener.writeBytes(String.valueOf(flipAnim) + "\r\n");
+                            c.outputOfListener.flush();
+                        }
+
+                        this.outputOfSpeaker.writeBytes("SEND PLAYER DATA PACKAGE" + "\r\n");
+                        this.outputOfSpeaker.flush();
+                    }
+
                     else{
+                        System.err.println("nan error on server");
                         this.outputOfSpeaker.writeBytes("NAN" + "\r\n");
                         this.outputOfSpeaker.flush();
                     }
