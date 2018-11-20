@@ -2,7 +2,10 @@ package main;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.*;
+import java.net.DatagramSocket;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -11,9 +14,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ServerManager extends JFrame {
-
-    private final String COMMANDS[] = {"CONNECT", "DISCONNECT", "REGISTER", "FRIENDS", "ADD FRIEND", "REQUESTS", "PARTY"};
-    private final int PORT = 6868;
+    public final int PORT = 6868;
+    public static final int UDP_PORT_LISTENER = 6867;
+    public static final int UDP_PORT_SPEAKER = 6866;
     private final int MAX_THREADS = 50;
 
     static int numberOfPLayers = 0;
@@ -25,6 +28,9 @@ public class ServerManager extends JFrame {
 
     private boolean loop;
     private JLabel count;
+    private JButton resetDB;
+
+    private DatagramSocket udpSpeaker;
 
     ServerManager(String path){
         this.url = "jdbc:ucanaccess://" + path + "DataBase.accdb";
@@ -41,11 +47,12 @@ public class ServerManager extends JFrame {
 
         try {
             this.server = new ServerSocket(this.PORT);
+            this.udpSpeaker = new DatagramSocket(ServerManager.UDP_PORT_SPEAKER);
         } catch (IOException e) {
             JOptionPane.showMessageDialog(this, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
         }
 
-        this.pool = Executors.newFixedThreadPool(this.MAX_THREADS);
+        this.pool = Executors.newCachedThreadPool();
         this.loop = true;
     }
 
@@ -54,17 +61,19 @@ public class ServerManager extends JFrame {
             Socket socketOfSpeaker, socketOfListener;
 
             try{
-                socketOfSpeaker = this.server.accept();
-                socketOfListener = this.server.accept();
-                numberOfPLayers++;
-                this.count.setText("Number of players: " + numberOfPLayers);
-                this.count.revalidate();
-                this.count.repaint();
-                super.revalidate();
-                super.repaint();
-                ClientSpeaker cp = new ClientSpeaker(socketOfSpeaker, socketOfListener, url, this.count, this);
-                ServerManager.currentPlayers.add(cp);
-                this.pool.execute(cp);
+                if(numberOfPLayers < this.MAX_THREADS){
+                    socketOfSpeaker = this.server.accept();
+                    socketOfListener = this.server.accept();
+                    numberOfPLayers++;
+                    this.count.setText("Number of players: " + numberOfPLayers);
+                    this.count.revalidate();
+                    this.count.repaint();
+                    super.revalidate();
+                    super.repaint();
+                    ClientSpeaker cp = new ClientSpeaker(socketOfSpeaker, socketOfListener, this.udpSpeaker, url, this.count, this);
+                    ServerManager.currentPlayers.add(cp);
+                    this.pool.execute(cp);
+                }
 
             } catch (IOException e){
                 JOptionPane.showMessageDialog(this, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
@@ -74,6 +83,9 @@ public class ServerManager extends JFrame {
         try {
             if(this.server != null)
                 this.server.close();
+
+            if(this.udpSpeaker != null)
+                this.udpSpeaker.close();
         } catch (IOException e) {
             JOptionPane.showMessageDialog(this, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
         }
@@ -85,15 +97,30 @@ public class ServerManager extends JFrame {
         super.setVisible(true);
         super.setSize(500, 150);
         super.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        super.setLayout(new FlowLayout());
+        super.setLayout(new GridLayout(3, 1));
+
+        this.resetDB = new JButton("Reset DB");
 
         Font customFont, customFont2;
         JLabel serverRunning = new JLabel("(Server Running)");
         serverRunning.setHorizontalAlignment(JLabel.CENTER);
-        serverRunning.setVerticalAlignment(JLabel.CENTER);
+        serverRunning.setVerticalAlignment(JLabel.TOP);
 
         label.setHorizontalAlignment(JLabel.CENTER);
-        label.setVerticalAlignment(JLabel.BOTTOM);
+        label.setVerticalAlignment(JLabel.CENTER);
+
+        this.resetDB.setHorizontalAlignment(JButton.CENTER);
+        this.resetDB.setVerticalAlignment(JButton.BOTTOM);
+
+        this.resetDB.addActionListener(e -> {
+            new ResetDataBase(url).run();
+            pool.shutdown();
+            pool = Executors.newCachedThreadPool();
+            numberOfPLayers = 0;
+            count.setText("Number of players: " + ServerManager.numberOfPLayers);
+            count.repaint();
+            count.revalidate();
+        });
 
         GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
 
@@ -142,6 +169,7 @@ public class ServerManager extends JFrame {
 
         super.add(serverRunning);
         super.add(label);
+        super.add(this.resetDB);
 
         super.revalidate();
         super.repaint();

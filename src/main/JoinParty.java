@@ -70,7 +70,7 @@ public class JoinParty extends ServerAction {
 
                 stmt = this.conn.prepareStatement("SELECT P.UserName " +
                         "From Players P " +
-                        "Where Online = 1 AND Party = " + this.partyId + "");
+                        "Where Online = 1 AND Party = " + this.partyId);
                 rs = stmt.executeQuery();
 
                 while(rs.next()) {

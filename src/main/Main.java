@@ -8,8 +8,12 @@ public class Main {
         //D:\GamesProjects\Java\SuperSmashShootServer
         //C:/Users/vazqu/IdeaProjects/SuperSmashShootServer/
         String databaseUrl = "D:/GamesProjects/Java/SuperSmashShootServer/";
-        if(args.length == 1)
-            databaseUrl = args[0];
+        if(args.length == 1){
+            if(args[0].equals("RELATIVE"))
+                databaseUrl = "";
+            else
+                databaseUrl = args[0];
+        }
 
         ServerManager serverManager = new ServerManager(databaseUrl);
         serverManager.runServer();

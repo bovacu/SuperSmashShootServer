@@ -30,7 +30,7 @@ public class Registration extends ServerAction {
             preparedStmt.setString(1, this.usr);
             preparedStmt.setString(2, this.psw);
             preparedStmt.setInt(3, 0);
-            preparedStmt.setString(4, party);
+            preparedStmt.setInt(4, -1);
             int result = preparedStmt.executeUpdate();
             preparedStmt.close();
 
@@ -42,13 +42,17 @@ public class Registration extends ServerAction {
                 preparedStmt.close();
                 output.writeBytes("REGISTER OK" + "\r\n");
                 output.writeBytes(this.usr + "\r\n");
-            }else
+            }else {
+                System.out.println("Repetido el valor a registrar");
                 output.writeBytes("REGISTER REPEATED" + "\r\n");
+            }
 
             output.flush();
 
         } catch(UcanaccessSQLException e){
+            e.printStackTrace();
             try {
+                System.err.println("error durante el registro");
                 output.writeBytes("REGISTER REPEATED" + "\r\n");
                 output.flush();
 

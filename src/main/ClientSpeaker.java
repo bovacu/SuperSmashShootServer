@@ -2,34 +2,14 @@ package main;
 
 import javax.swing.*;
 import java.io.*;
-import java.net.Socket;
+import java.net.*;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ClientSpeaker extends Thread {
 
-    private final String REQUESTS[] = { "CLOSE",                        //0
-                                        "FRIEND LIST",                  //1
-                                        "CONNECT",                      //2
-                                        "REGISTER",                     //3
-                                        "FRIEND REQUEST",               //4
-                                        "PARTY REQUEST",                //5
-                                        "SEND PARTY REQUEST",           //6
-                                        "SEND MESSAGE",                 //7
-                                        "SEND PARTY INVITATION",        //8
-                                        "CREATE PARTY",                 //9
-                                        "JOIN PARTY",                   //10
-                                        "ADD FRIEND",                   //11
-                                        "ACCEPT FRIEND",                //12
-                                        "LEAVE PARTY",                  //13
-                                        "STATS LIST",                   //14
-                                        "REMOVE FRIEND",                //15
-                                        "LOAD CHARACTER SELECTOR",      //16
-                                        "LOAD MAP SELECTOR",            //17
-                                        "START FIGHT",                  //18
-                                        "SEND PLAYER DATA PACKAGE"      //19
-    };
+    public enum CharacterType{SOLDIER, CLOWN, PIRATE, KNIGHT}
 
     private Socket socketOfSpeaker, socketOfListener;
     private DataInputStream inputOfSpeaker, inputOfListener;
@@ -39,19 +19,29 @@ public class ClientSpeaker extends Thread {
     private JLabel label;
     private JFrame frame;
 
+    private DatagramSocket udpSpeaker, udpListener;
+    private DatagramPacket udpPacketSpeaker, udpPacketListener;
+    private byte messageReceived[], messageSent[];
+
     private boolean readyForFightF;
+    private boolean playingMatchF;
 
     private List<ClientSpeaker> playersToSendInfo;
 
-    private ObjectInputStream objectInputStream;
-    private ObjectOutputStream objectOutputStream;
+    private int clientPort;
+    private String clientAddress;
 
-    ClientSpeaker(Socket socketOfSpeaker, Socket socketOfListener,  String url, JLabel label, JFrame frame){
+    private CharacterType character;
+
+    private int skin;
+
+    ClientSpeaker(Socket socketOfSpeaker, Socket socketOfListener,  DatagramSocket udpSpeaker, String url, JLabel label, JFrame frame){
         this.socketOfSpeaker = socketOfSpeaker;
         this.socketOfListener = socketOfListener;
         this.label = label;
         this.frame = frame;
         this.readyForFightF = false;
+        this.playingMatchF = false;
         this.playersToSendInfo = new ArrayList<>();
 
         try {
@@ -66,276 +56,277 @@ public class ClientSpeaker extends Thread {
 
             this.inputOfListener = new DataInputStream(socketOfListener.getInputStream());
             this.outputOfListener = new DataOutputStream(socketOfListener.getOutputStream());
+
+            this.messageReceived = new byte[256];
+            this.messageSent = new byte[256];
+
+            this.udpSpeaker = udpSpeaker;
+            this.udpListener = new DatagramSocket();
+
+            this.udpPacketSpeaker = new DatagramPacket(this.messageReceived, this.messageReceived.length);
+
         } catch (IOException e) {
             JOptionPane.showMessageDialog(this.frame, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
         }
     }
 
     @Override
     public void run() {
-        while(true){
+
+        boolean loop = true;
+
+        while(loop){
             try {
-                String requests = this.inputOfSpeaker.readLine();
-                //System.out.println(requests);
+
+                String requests;
+                if(!this.playingMatchF){
+                    requests = this.inputOfSpeaker.readLine();
+                }else {
+                    requests = "SEND PLAYER DATA PACKAGE";
+                }
+
+                if(requests.split(":").length > 1)
+                    requests = requests.split(":")[0];
+
                 if(requests != null){
-                    if(requests.equals(this.REQUESTS[0])) {
-                        ServerManager.numberOfPLayers--;
-                        this.label.setText("Number of players: " + ServerManager.numberOfPLayers);
-                        this.label.revalidate();
-                        this.label.repaint();
-                        ServerManager.currentPlayers.remove(this);
-                        DisconnectFromGame d = new DisconnectFromGame(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
-                        d.run();
-                        this.outputOfSpeaker.writeBytes("CLOSE OK" + "\r\n");
-                        this.outputOfListener.writeBytes("CLOSE OK" + "\r\n");
-                        this.outputOfSpeaker.flush();
-                        this.outputOfListener.flush();
-                        break;
-                    }
 
-                    else if(requests.equals(this.REQUESTS[1])){
-                        this.outputOfSpeaker.writeBytes("SENDING FRIEND LIST" + "\r\n");
-                        FriendList f = new FriendList(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
-                        f.run();
-                    }
+                    switch (requests){
+                        case "CLOSE" : {
+                            ServerManager.numberOfPLayers--;
+                            this.label.setText("Number of players: " + ServerManager.numberOfPLayers);
+                            this.label.revalidate();
+                            this.label.repaint();
+                            ServerManager.currentPlayers.remove(this);
+                            DisconnectFromGame d = new DisconnectFromGame(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
+                            d.run();
+                            this.outputOfSpeaker.writeBytes("CLOSE OK" + "\r\n");
+                            this.outputOfListener.writeBytes("CLOSE OK" + "\r\n");
+                            this.outputOfSpeaker.flush();
+                            this.outputOfListener.flush();
 
-                    else if(requests.equals(this.REQUESTS[2])){
-                        String usr = this.inputOfSpeaker.readLine();
-                        String psw = this.inputOfSpeaker.readLine();
-                        this.userName = usr;
-                        super.setName(this.userName);
-                        ConnectToGame c = new ConnectToGame(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, usr, psw);
-                        c.run();
-                    }
+                            break;
+                        }
 
-                    else if(requests.equals(this.REQUESTS[3])){
-                        String usr = this.inputOfSpeaker.readLine();
-                        String psw = this.inputOfSpeaker.readLine();
-                        Registration r = new Registration(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, usr, psw);
-                        r.run();
-                    }
+                        case "FRIEND LIST" : {
+                            this.outputOfSpeaker.writeBytes("SENDING FRIEND LIST" + "\r\n");
+                            FriendList f = new FriendList(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
+                            f.run();
 
-                    else if(requests.equals(this.REQUESTS[4])){
-                        this.outputOfSpeaker.writeBytes("SENDING REQUEST LIST" + "\r\n");
-                        FriendRequestList fr = new FriendRequestList(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
-                        fr.run();
-                    }
+                            break;
+                        }
 
-                    else if(requests.equals(this.REQUESTS[5])){
-                        this.outputOfSpeaker.writeBytes("SENDING PARTY REQUESTS" + "\r\n");
-                        PartyRequestList pr = new PartyRequestList(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
-                        pr.run();
-                    }
+                        case "CONNECT" : {
+                            String usr = this.inputOfSpeaker.readLine();
+                            String psw = this.inputOfSpeaker.readLine();
+                            this.clientAddress = this.inputOfSpeaker.readLine();
+                            this.clientPort = Integer.valueOf(this.inputOfSpeaker.readLine());
+                            this.udpPacketListener = new DatagramPacket(this.messageSent, this.messageSent.length, InetAddress.getByName(this.clientAddress), this.clientPort);
+                            this.userName = usr;
+                            super.setName(this.userName);
+                            ConnectToGame c = new ConnectToGame(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, usr, psw);
+                            c.run();
 
-                    else if(requests.equals(this.REQUESTS[6])){
-                        String partyRequestReceiver = this.inputOfSpeaker.readLine();
-                        for(ClientSpeaker c : ServerManager.currentPlayers)
-                            if(c.getName().equals(partyRequestReceiver)) {
-                                List<String> toSend = new ArrayList<>();
-                                toSend.add("PARTY REQUEST SENT");
-                                toSend.add(this.userName);
-                                c.writeInstantAction(toSend);
-                                break;
-                            }
-                    }
+                            break;
+                        }
 
-                    else if(requests.equals(this.REQUESTS[7])){
-                        String infoSent = this.inputOfSpeaker.readLine();
-                        String colors[] = {"[GREEN]", "[ORANGE]", "[PINK]"};
-                        int colorCounter = 0;
-                        String name;
-                        while(!(name = this.inputOfSpeaker.readLine()).equals("END")) {
-                            for (ClientSpeaker c : ServerManager.currentPlayers) {
-                                if (c.getName().equals(name)) {
+                        case "REGISTER" : {
+                            String usr = this.inputOfSpeaker.readLine();
+                            String psw = this.inputOfSpeaker.readLine();
+                            Registration r = new Registration(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, usr, psw);
+                            r.run();
+
+                            break;
+                        }
+
+                        case "FRIEND REQUEST" : {
+                            this.outputOfSpeaker.writeBytes("SENDING REQUEST LIST" + "\r\n");
+                            FriendRequestList fr = new FriendRequestList(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
+                            fr.run();
+
+                            break;
+                        }
+
+                        case "PARTY REQUEST" : {
+                            this.outputOfSpeaker.writeBytes("SENDING PARTY REQUESTS" + "\r\n");
+                            PartyRequestList pr = new PartyRequestList(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
+                            pr.run();
+
+                            break;
+                        }
+
+                        case "SEND PARTY REQUEST" : {
+                            String partyRequestReceiver = this.inputOfSpeaker.readLine();
+                            for(ClientSpeaker c : ServerManager.currentPlayers)
+                                if(c.getName().equals(partyRequestReceiver)) {
                                     List<String> toSend = new ArrayList<>();
-                                    toSend.add("RECEIVE MESSAGE");
-                                    toSend.add(colors[colorCounter] + this.userName + "[]");
-                                    toSend.add(infoSent);
+                                    toSend.add("PARTY REQUEST SENT");
+                                    toSend.add(this.userName);
                                     c.writeInstantAction(toSend);
-                                    colorCounter++;
+                                    break;
+                                }
+                        }
+
+                        case "SEND MESSAGE" : {
+                            String infoSent = this.inputOfSpeaker.readLine();
+                            String colors[] = {"[GREEN]", "[ORANGE]", "[PINK]"};
+                            int colorCounter = 0;
+                            String name;
+                            while(!(name = this.inputOfSpeaker.readLine()).equals("END")) {
+                                for (ClientSpeaker c : ServerManager.currentPlayers) {
+                                    if (c.getName().equals(name)) {
+                                        List<String> toSend = new ArrayList<>();
+                                        toSend.add("RECEIVE MESSAGE");
+                                        toSend.add(colors[colorCounter] + this.userName + "[]");
+                                        toSend.add(infoSent);
+                                        c.writeInstantAction(toSend);
+                                        colorCounter++;
+                                    }
                                 }
                             }
-                        }
-                        this.outputOfSpeaker.writeBytes("MESSAGE SENT" + "\r\n");
-                        this.outputOfSpeaker.flush();
-                    }
+                            this.outputOfSpeaker.writeBytes("MESSAGE SENT" + "\r\n");
+                            this.outputOfSpeaker.flush();
 
-                    else if(requests.equals(this.REQUESTS[8])){
-                        String host = this.inputOfSpeaker.readLine();
-                        String guest = this.inputOfSpeaker.readLine();
-                        boolean found = false;
-                        for(ClientSpeaker c : ServerManager.currentPlayers)
-                            if(c.getName().equals(guest)) {
-                                found = true;
-                                SendPartyRequest spr = new SendPartyRequest(this.socketOfSpeaker, this.inputOfSpeaker,
-                                        this.outputOfSpeaker, c.outputOfListener, this.connection, host, guest);
-                                spr.run();
-                                break;
-                            }
+                            break;
+                        }
+
+                        case "SEND PARTY INVITATION" : {
+                            String host = this.inputOfSpeaker.readLine();
+                            String guest = this.inputOfSpeaker.readLine();
+                            boolean found = false;
+                            for(ClientSpeaker c : ServerManager.currentPlayers)
+                                if(c.getName().equals(guest)) {
+                                    found = true;
+                                    SendPartyRequest spr = new SendPartyRequest(this.socketOfSpeaker, this.inputOfSpeaker,
+                                            this.outputOfSpeaker, c.outputOfListener, this.connection, host, guest);
+                                    spr.run();
+                                    break;
+                                }
 
                             if(!found)
                                 this.outputOfSpeaker.writeBytes("INVITATION OFFLINE" + "\r\n");
-                    }
 
-                    else if(requests.equals(this.REQUESTS[9])){
-                        CreateParty c = new CreateParty(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
-                        c.run();
-                        this.outputOfSpeaker.writeBytes("PARTY CREATED" + "\r\n");
-                        this.outputOfSpeaker.flush();
-                    }
-
-                    else if(requests.equals(this.REQUESTS[10])){
-                        String host = this.inputOfSpeaker.readLine();
-                        JoinParty c = new JoinParty(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName, host);
-                        c.run();
-                    }
-
-                    else if(requests.equals(this.REQUESTS[11])){
-                        String friend = this.inputOfSpeaker.readLine();
-                        AddFriend af = new AddFriend(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName, friend);
-                        af.run();
-                    }
-
-                    else if(requests.equals(this.REQUESTS[12])){
-                        String friend = this.inputOfSpeaker.readLine();
-                        AcceptFriend af = new AcceptFriend(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName, friend);
-                        af.run();
-                    }
-
-                    else if(requests.equals(this.REQUESTS[13])){
-                        List<String> partyMembers = new ArrayList<>();
-
-                        String friend;
-
-                        while(!(friend = this.inputOfSpeaker.readLine()).equals("END"))
-                            partyMembers.add(friend);
-
-                        LeaveParty lp = new LeaveParty(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName, partyMembers);
-                        lp.run();
-                    }
-
-                    else if(requests.equals(this.REQUESTS[14])){
-                        StatsList sl = new StatsList(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
-                        sl.run();
-                    }
-
-                    else if(requests.equals(this.REQUESTS[15])){
-                        String frd = this.inputOfSpeaker.readLine();
-                        RemoveFriend sl = new RemoveFriend(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName, frd);
-                        sl.run();
-                    }
-
-                    else if(requests.equals(this.REQUESTS[16])){
-                        List<String> partyMembers = new ArrayList<>();
-                        String friend;
-                        while(!(friend = this.inputOfSpeaker.readLine()).equals("END"))
-                            partyMembers.add(friend);
-
-                        for(ClientSpeaker c : ServerManager.currentPlayers){
-                            for(String name : partyMembers){
-                                if(c.getName().equals(name)){
-                                    List<String> toSend = new ArrayList<>();
-                                    toSend.add("LOAD CHARACTER SELECTOR");
-                                    c.writeInstantAction(toSend);
-                                }
-                            }
+                            break;
                         }
 
-                        this.outputOfSpeaker.writeBytes("OK" + "\r\n");
-                        this.outputOfSpeaker.flush();
-                    }
+                        case "CREATE PARTY" : {
+                            CreateParty c = new CreateParty(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
+                            c.run();
+                            this.outputOfSpeaker.writeBytes("PARTY CREATED" + "\r\n");
+                            this.outputOfSpeaker.flush();
 
-                    else if(requests.equals(this.REQUESTS[17])){
-                        this.readyForFightF = true;
-                        boolean goToMapSelector = true;
-
-                        List<String> partyMembers = new ArrayList<>();
-                        String friend;
-                        while(!(friend = this.inputOfSpeaker.readLine()).equals("END"))
-                            partyMembers.add(friend);
-
-                        for(ClientSpeaker c : ServerManager.currentPlayers){
-                            for(String name : partyMembers){
-                                if(c.getName().equals(name)){
-                                    this.playersToSendInfo.add(c);
-                                }
-                            }
+                            break;
                         }
 
-                        for(ClientSpeaker c : ServerManager.currentPlayers){
-                            for(String name : partyMembers){
-                                if(c.getName().equals(name)){
-                                    if(!c.readyForFightF){
-                                        goToMapSelector = false;
-                                        break;
-                                    }
-                                }
-                            }
+                        case "JOIN PARTY" : {
+                            String host = this.inputOfSpeaker.readLine();
+                            JoinParty c = new JoinParty(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName, host);
+                            c.run();
+
+                            break;
                         }
 
-                        if(goToMapSelector){
-                            List<String> toSend = new ArrayList<>();
-                            toSend.add("LOAD MAP SELECTOR");
-                            this.writeInstantAction(toSend);
-                            for(ClientSpeaker c : ServerManager.currentPlayers){
-                                for(String name : partyMembers){
-                                    if(c.getName().equals(name)){
-                                        c.writeInstantAction(toSend);
-                                    }
-                                }
-                            }
+                        case "ADD FRIEND" : {
+                            String friend = this.inputOfSpeaker.readLine();
+                            AddFriend af = new AddFriend(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName, friend);
+                            af.run();
+
+                            break;
                         }
 
-                        this.outputOfSpeaker.writeBytes("OK" + "\r\n");
-                        this.outputOfSpeaker.flush();
-                    }
+                        case "ACCEPT FRIEND" : {
+                            String friend = this.inputOfSpeaker.readLine();
+                            AcceptFriend af = new AcceptFriend(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName, friend);
+                            af.run();
 
-                    else if(requests.equals(this.REQUESTS[18])){
-                        String map = this.inputOfSpeaker.readLine();
-
-                        this.outputOfSpeaker.writeBytes("START FIGHT" + "\r\n");
-                        this.outputOfSpeaker.flush();
-
-                        List<String> toSend =  new ArrayList<>();
-                        toSend.add("START FIGHT");
-                        toSend.add(map);
-                        toSend.add(String.valueOf(this.playersToSendInfo.size()));
-
-                        this.writeInstantAction(toSend);
-
-                        for(ClientSpeaker c : this.playersToSendInfo)
-                            c.writeInstantAction(toSend);
-                    }
-
-                    else if(requests.equals(this.REQUESTS[19])){
-                        String usr = this.inputOfSpeaker.readLine();
-                        int x = Integer.parseInt(this.inputOfSpeaker.readLine());
-                        int y = Integer.parseInt(this.inputOfSpeaker.readLine());
-                        String anim = this.inputOfSpeaker.readLine();
-                        boolean flipAnim = Boolean.parseBoolean(this.inputOfSpeaker.readLine());
-
-                        for(ClientSpeaker c : this.playersToSendInfo) {
-                            c.outputOfListener.writeBytes("DATA PACKAGES INFO" + "\r\n");
-                            c.outputOfListener.writeBytes(usr + "\r\n");
-                            c.outputOfListener.writeBytes(String.valueOf(x) + "\r\n");
-                            c.outputOfListener.writeBytes(String.valueOf(y) + "\r\n");
-                            c.outputOfListener.writeBytes(anim + "\r\n");
-                            c.outputOfListener.writeBytes(String.valueOf(flipAnim) + "\r\n");
-                            c.outputOfListener.flush();
+                            break;
                         }
 
-                        this.outputOfSpeaker.writeBytes("SEND PLAYER DATA PACKAGE" + "\r\n");
-                        this.outputOfSpeaker.flush();
+                        case "LEAVE PARTY" : {
+                            List<String> partyMembers = new ArrayList<>();
+
+                            String friend;
+
+                            while(!(friend = this.inputOfSpeaker.readLine()).equals("END"))
+                                partyMembers.add(friend);
+
+                            LeaveParty lp = new LeaveParty(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName, partyMembers);
+                            lp.run();
+
+                            break;
+                        }
+
+                        case "STATS LIST" : {
+                            StatsList sl = new StatsList(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
+                            sl.run();
+
+                            break;
+                        }
+
+                        case "REMOVE FRIEND" : {
+                            String frd = this.inputOfSpeaker.readLine();
+                            RemoveFriend sl = new RemoveFriend(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName, frd);
+                            sl.run();
+
+                            break;
+                        }
+
+                        case "LOAD CHARACTER SELECTOR" : {
+                            this.loadCharacterSelector();
+
+                            break;
+                        }
+
+                        case "LOAD MAP SELECTOR" : {
+                            this.loadMapSelector();
+
+                            break;
+                        }
+
+                        case "START FIGHT" : {
+                            this.startFight();
+
+                            break;
+                        }
+
+                        case "SEND PLAYER DATA PACKAGE" : {
+                            this.sendDataPackage();
+
+                            break;
+                        }
+
+                        default : {
+                            System.err.println("nan error on server");
+                            this.outputOfSpeaker.writeBytes("NAN" + "\r\n");
+                            this.outputOfSpeaker.flush();
+                        }
                     }
 
-                    else{
-                        System.err.println("nan error on server");
-                        this.outputOfSpeaker.writeBytes("NAN" + "\r\n");
-                        this.outputOfSpeaker.flush();
-                    }
+                    if(requests.equals("CLOSE"))
+                        break;
                 }
-            } catch (IOException e) {
+
+                /*------------------------------- CERRAR LAS CONEXIONES -----------------------------*/
+            } catch (SocketException e){
                 e.printStackTrace();
+                ServerManager.numberOfPLayers--;
+                this.label.setText("Number of players: " + ServerManager.numberOfPLayers);
+                this.label.revalidate();
+                this.label.repaint();
+                ServerManager.currentPlayers.remove(this);
+                DisconnectFromGame d = new DisconnectFromGame(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
+                d.run();
+
+                break;
+            }catch (IOException e) {
+                e.printStackTrace();
+                ServerManager.numberOfPLayers--;
+                this.label.setText("Number of players: " + ServerManager.numberOfPLayers);
+                this.label.revalidate();
+                this.label.repaint();
+                ServerManager.currentPlayers.remove(this);
+                DisconnectFromGame d = new DisconnectFromGame(this.socketOfSpeaker, this.inputOfSpeaker, this.outputOfSpeaker, this.connection, this.userName);
+                d.run();
                 try {
                     this.inputOfSpeaker.close();
                     this.outputOfSpeaker.close();
@@ -346,6 +337,7 @@ public class ClientSpeaker extends Thread {
                     this.connection.close();
                 } catch (IOException e1) {
                     JOptionPane.showMessageDialog(this.frame, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
+                    e1.printStackTrace();
                 } catch (SQLException e1) {
                     e1.printStackTrace();
                 }
@@ -362,15 +354,17 @@ public class ClientSpeaker extends Thread {
             this.socketOfListener.close();
         } catch (IOException e) {
             JOptionPane.showMessageDialog(this.frame, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
         }
     }
 
-    public void writeInstantAction(List<String> commands){
+    void writeInstantAction(List<String> commands){
         for(String s : commands){
             try {
                 this.outputOfListener.writeBytes(s + "\r\n");
             } catch (IOException e) {
                 JOptionPane.showMessageDialog(this.frame, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
+                e.printStackTrace();
             }
         }
 
@@ -378,6 +372,131 @@ public class ClientSpeaker extends Thread {
             this.outputOfListener.flush();
         } catch (IOException e) {
             JOptionPane.showMessageDialog(this.frame, e.getMessage(), "Exception", JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
         }
+    }
+
+    private void setPlayingMatchF(boolean playingMatchF){
+        this.playingMatchF = playingMatchF;
+    }
+
+    private void loadCharacterSelector() throws IOException {
+        List<String> partyMembers = new ArrayList<>();
+
+        String friend;
+
+        while(!(friend = this.inputOfSpeaker.readLine()).equals("END"))
+            partyMembers.add(friend);
+
+        for(ClientSpeaker c : ServerManager.currentPlayers){
+            for(String name : partyMembers){
+                if(c.getName().equals(name)){
+                    List<String> toSend = new ArrayList<>();
+                    toSend.add("LOAD CHARACTER SELECTOR");
+                    c.writeInstantAction(toSend);
+                }
+            }
+        }
+
+        this.outputOfSpeaker.writeBytes("OK" + "\r\n");
+        this.outputOfSpeaker.flush();
+    }
+
+    private void loadMapSelector() throws IOException {
+        this.readyForFightF = true;
+
+        this.character = CharacterType.valueOf(this.inputOfSpeaker.readLine());
+        this.skin = Integer.valueOf(this.inputOfSpeaker.readLine());
+        System.out.println("player " + this.userName + ", character: " + this.character + ", skin: " + this.skin);
+
+        if(this.inputOfSpeaker.readLine().equals("NOT HOST"))
+            this.playingMatchF = true;
+
+        boolean goToMapSelector = true;
+
+        List<String> partyMembers = new ArrayList<>();
+        String friend;
+        while(!(friend = this.inputOfSpeaker.readLine()).equals("END")) {
+            partyMembers.add(friend);
+        }
+
+        for(ClientSpeaker c : ServerManager.currentPlayers){
+            for(String name : partyMembers){
+                if(c.getName().equals(name)){
+                    this.playersToSendInfo.add(c);
+                }
+            }
+        }
+
+        for(ClientSpeaker c : ServerManager.currentPlayers){
+            for(String name : partyMembers){
+                if(c.getName().equals(name)){
+                    if(!c.readyForFightF){
+                        goToMapSelector = false;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if(goToMapSelector){
+            List<String> toSend = new ArrayList<>();
+            toSend.add("LOAD MAP SELECTOR");
+            this.writeInstantAction(toSend);
+            for(ClientSpeaker c : ServerManager.currentPlayers){
+                for(String name : partyMembers){
+                    if(c.getName().equals(name)){
+                        c.writeInstantAction(toSend);
+                    }
+                }
+            }
+        }
+
+        this.outputOfSpeaker.writeBytes("OK" + "\r\n");
+        this.outputOfSpeaker.flush();
+    }
+
+    private void startFight() throws IOException {
+        String map = this.inputOfSpeaker.readLine();
+        this.outputOfSpeaker.writeBytes("START FIGHT" + "\r\n");
+        this.outputOfSpeaker.flush();
+
+        String playersAndSkins = "USER:" + this.userName + ":" + this.character + ":" + this.skin;
+
+        for(ClientSpeaker c : this.playersToSendInfo){
+            playersAndSkins += "USER:" + c.userName + ":" + c.character + ":" + c.skin;
+        }
+
+        List<String> toSend =  new ArrayList<>();
+        toSend.add("START FIGHT");
+        toSend.add(map);
+        toSend.add(String.valueOf(this.playersToSendInfo.size()));
+        toSend.add(playersAndSkins);
+        this.playingMatchF = true;
+
+        this.writeInstantAction(toSend);
+
+        for(ClientSpeaker c : this.playersToSendInfo) {
+            c.setPlayingMatchF(true);
+            c.writeInstantAction(toSend);
+        }
+    }
+
+    private void sendDataPackage() throws IOException {
+        List<ClientSpeaker> toRemove = new ArrayList<>();
+
+        /*--------------------- UDP VERSION ---------------------**/
+        this.udpSpeaker.receive(this.udpPacketSpeaker);
+
+        for(ClientSpeaker c : this.playersToSendInfo) {
+            try{
+                c.udpPacketListener.setData(this.udpPacketSpeaker.getData(), 0, this.udpPacketSpeaker.getLength());
+                c.udpListener.send(c.udpPacketListener);
+            }catch (SocketException e){
+                toRemove.add(c);
+            }
+        }
+
+        this.playersToSendInfo.removeAll(toRemove);
     }
 }
